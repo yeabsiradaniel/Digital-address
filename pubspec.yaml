@@ -17,6 +17,7 @@ dependencies:
   # For the draggable bottom sheet
   sliding_up_panel: ^2.0.0+1
 
+
   provider: ^6.1.1
 
   # For easy access to a clean, system-like font

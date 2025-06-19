@@ -40,26 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           CupertinoListSection.insetGrouped(
-            header: const Text('MAP DISPLAY'),
-            // --- THIS IS THE FIX ---
-            // We put the control directly inside the list tile. The tile provides
-            // the necessary padding and constraints.
-            children: [
-              CupertinoListTile(
-                title: CupertinoSegmentedControl<int>(
-                  children: const {
-                    0: Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('Standard')),
-                    1: Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('Satellite')),
-                  },
-                  onValueChanged: (int value) => setState(() => _mapTypeIndex = value),
-                  groupValue: _mapTypeIndex,
-                  // Let the control use the full width provided by the list tile.
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                ),
-              ),
-            ],
-          ),
-          CupertinoListSection.insetGrouped(
             children: const [
               CupertinoListTile(title: Text('Privacy Policy'), trailing: CupertinoListTileChevron()),
               CupertinoListTile(title: Text('Terms of Service'), trailing: CupertinoListTileChevron()),

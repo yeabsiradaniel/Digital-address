@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 class SearchPreferencesScreen extends StatefulWidget {
   const SearchPreferencesScreen({super.key});
@@ -8,211 +8,193 @@ class SearchPreferencesScreen extends StatefulWidget {
 }
 
 class _SearchPreferencesScreenState extends State<SearchPreferencesScreen> {
-  // State variables for all filter controls
-  int _propertyTypeIndex = 2; // Default to COMMERCIAL
-  String _selectedSubType = 'CONDOMINIUM';
-  double _floorValue = 3.0;
-  double _sizeValue = 180.0;
-  int _bedroomIndex = 2; // Default to 2 Beds
-  Set<String> _selectedUtilities = {'Heat', 'Water'};
-  int _taxIndex = 0; // Default to Payed
+  // State variables remain the same
+  String _propertyType = 'COMMERCIAL';
+  String _subType = 'CONDOMINIUM';
+  double _floorValue = 3;
+  double _sizeValue = 180;
+  String _bedrooms = '2 Beds';
+  Set<String> _utilities = {'Heat', 'Water'};
+  String _taxStatus = 'Payed';
   bool _onlyShowAvailable = true;
   bool _hideRemote = false;
 
   void _applyFilterAndReturn() {
-    String filterResult;
-    switch (_propertyTypeIndex) {
-      case 0:
-        filterResult = 'public';
-        break;
-      case 1:
-        filterResult = 'private';
-        break;
-      case 2:
-        filterResult = 'commercial';
-        break;
-      default:
-        return;
-    }
-    Navigator.of(context).pop(filterResult);
+    Navigator.of(context).pop(_propertyType.toLowerCase());
+  }
+
+  void _savePreferences() {
+    // TODO: Implement the logic to save the user's preferences.
+    print('Save button pressed. Implement save logic here.');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Preferences Saved!')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('Search Preferences'),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Search Preferences'),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
       ),
-      // --- THE FULL LISTVIEW IS RESTORED HERE ---
-      child: ListView(
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
         children: [
-          const SizedBox(height: 20),
-          _buildSection(
-            header: 'PROPERTY TYPE',
-            child: _buildSegmentedControl(
-              groupValue: _propertyTypeIndex,
-              onValueChanged: (val) => setState(() => _propertyTypeIndex = val!),
-              children: const {0: 'PUBLIC', 1: 'PRIVATE', 2: 'COMMERCIAL'},
-            ),
+          _buildSectionHeader('PROPERTY TYPE'),
+          _buildRectangularToggleButtons(
+            options: const ['PUBLIC', 'PRIVATE', 'COMMERCIAL'],
+            selected: _propertyType,
+            onSelected: (value) => setState(() => _propertyType = value),
           ),
-          _buildSection(
-            child: _buildChoiceChips(
-              options: ['INDUSTRIAL', 'APARTMENT', 'CONDOMINIUM'],
-              selected: _selectedSubType,
-              onSelected: (val) => setState(() => _selectedSubType = val),
-            ),
+          const SizedBox(height: 10),
+          _buildPillChoiceChips(
+            options: const ['INDUSTRIAL', 'APARTMENT', 'CONDOMINIUM'],
+            selected: _subType,
+            onSelected: (value) => setState(() => _subType = value),
           ),
-          _buildSection(
-            header: 'FLOOR',
-            child: _buildSliderTile(
-              value: _floorValue,
-              min: 0, max: 9, divisions: 9,
-              label: _floorValue.round().toString(),
-              onChanged: (val) => setState(() => _floorValue = val),
-            ),
+          _buildSectionHeader('FLOOR'),
+          _buildSlider(
+            value: _floorValue, min: 0, max: 9, divisions: 9,
+            label: _floorValue.round().toString(),
+            onChanged: (value) => setState(() => _floorValue = value),
           ),
-          _buildSection(
-            header: 'SIZE',
-            child: _buildSliderTile(
-              value: _sizeValue,
-              min: 0, max: 400, divisions: 20,
-              label: '${_sizeValue.round()} M²',
-              onChanged: (val) => setState(() => _sizeValue = val),
-            ),
+          _buildSectionHeader('SIZE'),
+          _buildSlider(
+            value: _sizeValue, min: 0, max: 400, divisions: 20,
+            label: '${_sizeValue.round()} M²',
+            onChanged: (value) => setState(() => _sizeValue = value),
           ),
-          _buildSection(
-            header: 'BEDROOM',
-            child: _buildSegmentedControl(
-              groupValue: _bedroomIndex,
-              onValueChanged: (val) => setState(() => _bedroomIndex = val!),
-              children: const {0: 'Studio', 1: '1 Bed', 2: '2 Beds', 3: '3 Beds', 4: '4+'},
-            ),
+          _buildSectionHeader('BEDROOM'),
+          _buildRectangularToggleButtons(
+            options: const ['Studio', '1 Bed', '2 Beds', '3 Beds', '4+'],
+            selected: _bedrooms,
+            onSelected: (value) => setState(() => _bedrooms = value),
           ),
-          _buildSection(
-            header: 'UTILITIES',
-            child: _buildMultiChoiceChips(
-              options: ['Heat', 'Electricity', 'Water', 'Internet'],
-              selected: _selectedUtilities,
-              onSelected: (val) {
-                setState(() {
-                  _selectedUtilities.contains(val) ? _selectedUtilities.remove(val) : _selectedUtilities.add(val);
-                });
-              },
-            ),
+          _buildSectionHeader('UTILITIES'),
+          _buildPillChoiceChips(
+            options: const ['Heat', 'Electricity', 'Water', 'Internet'],
+            selectedSet: _utilities,
+            onSelected: (value) {
+              setState(() {
+                _utilities.contains(value) ? _utilities.remove(value) : _utilities.add(value);
+              });
+            },
           ),
-          _buildSection(
-            header: 'TAX',
-            child: _buildSegmentedControl(
-              groupValue: _taxIndex,
-              onValueChanged: (val) => setState(() => _taxIndex = val!),
-              children: const {0: 'Payed', 1: 'Pending'},
-            ),
+          _buildSectionHeader('TAX'),
+          _buildRectangularToggleButtons(
+            options: const ['Payed', 'Pending'],
+            selected: _taxStatus,
+            onSelected: (value) => setState(() => _taxStatus = value),
           ),
-          _buildSection(
-            child: Column(
-              children: [
-                _buildSwitchTile(title: 'Only show properties available in the City', value: _onlyShowAvailable, onChanged: (val) => setState(() => _onlyShowAvailable = val)),
-                Container(height: 0.5, color: CupertinoColors.separator),
-                _buildSwitchTile(title: 'Hide properties without DA', value: _hideRemote, onChanged: (val) => setState(() => _hideRemote = val)),
-              ],
-            ),
-          ),
-          _buildActionButtons(),
+          const SizedBox(height: 24),
+          _buildSwitchTile('Only show properties available in the City', _onlyShowAvailable, (value) => setState(() => _onlyShowAvailable = value)),
+          _buildSwitchTile('Hide properties without DA', _hideRemote, (value) => setState(() => _hideRemote = value)),
+          const SizedBox(height: 24),
         ],
       ),
+      persistentFooterButtons: [
+        _buildActionButtons(),
+      ],
+      persistentFooterAlignment: AlignmentDirectional.center,
     );
   }
 
-  // --- All helper methods are included below for completeness ---
+  // --- HELPER WIDGETS ---
 
-  Widget _buildSection({String? header, required Widget child}) {
-    return CupertinoListSection.insetGrouped(
-      header: header != null ? Text(header) : null,
-      children: [child],
-    );
-  }
-
-  Widget _buildSegmentedControl({required int groupValue, required ValueChanged<int?> onValueChanged, required Map<int, String> children}) {
+  Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: CupertinoSlidingSegmentedControl<int>(
-        groupValue: groupValue,
-        onValueChanged: onValueChanged,
-        children: children.map((key, value) => MapEntry(key, Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text(value)))),
-      ),
+      padding: const EdgeInsets.only(top: 24.0, bottom: 12.0),
+      child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
     );
   }
 
-  Widget _buildChoiceChips({required List<String> options, required String selected, required ValueChanged<String> onSelected}) {
-    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Wrap(
-        spacing: 8.0, runSpacing: 8.0, alignment: WrapAlignment.center,
+  // **THIS WIDGET IS NOW CORRECT**
+  Widget _buildRectangularToggleButtons({required List<String> options, required String selected, required ValueChanged<String> onSelected}) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      // A Row in a SingleChildScrollView will allow its children to be their natural width.
+      child: Row(
         children: options.map((option) {
           final isSelected = option == selected;
-          return CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            color: isSelected ? CupertinoColors.activeBlue : (isDark ? CupertinoColors.darkBackgroundGray : CupertinoColors.systemGrey5),
-            child: Text(option, style: TextStyle(color: isSelected ? CupertinoColors.white : CupertinoColors.label, fontSize: 14)),
-            onPressed: () => onSelected(option),
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: OutlinedButton(
+              onPressed: () => onSelected(option),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: isSelected ? Colors.white : Theme.of(context).colorScheme.primary,
+                backgroundColor: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                side: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.5)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                // The incorrect `textStyle` property has been removed from here.
+              ),
+              // **THE FIX IS HERE**: `softWrap: false` is added to the Text widget.
+              child: Text(
+                option,
+                softWrap: false, // This prevents the text from wrapping to a new line.
+              ),
+            ),
           );
         }).toList(),
       ),
     );
   }
 
-  Widget _buildMultiChoiceChips({required List<String> options, required Set<String> selected, required ValueChanged<String> onSelected}) {
-    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Wrap(
-        spacing: 8.0, runSpacing: 8.0, alignment: WrapAlignment.center,
-        children: options.map((option) {
-          final isSelected = selected.contains(option);
-          return CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            color: isSelected ? CupertinoColors.activeBlue : (isDark ? CupertinoColors.darkBackgroundGray : CupertinoColors.systemGrey5),
-            child: Text(option, style: TextStyle(color: isSelected ? CupertinoColors.white : CupertinoColors.label, fontSize: 14)),
-            onPressed: () => onSelected(option),
-          );
-        }).toList(),
-      ),
+  Widget _buildPillChoiceChips({List<String> options = const [], String? selected, Set<String>? selectedSet, required ValueChanged<String> onSelected}) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: options.map((option) {
+        final isSelected = selected != null ? option == selected : selectedSet!.contains(option);
+        return ElevatedButton(
+          onPressed: () => onSelected(option),
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            backgroundColor: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.secondaryContainer,
+            foregroundColor: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSecondaryContainer,
+            shape: const StadiumBorder(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          ),
+          child: Text(option),
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildSliderTile({required double value, required double min, required double max, required int divisions, required String label, required ValueChanged<double> onChanged}) {
-    return CupertinoListTile(
-      title: Row(children: [const Spacer(), Text(label, style: const TextStyle(color: CupertinoColors.secondaryLabel))]),
-      subtitle: CupertinoSlider(value: value, min: min, max: max, divisions: divisions, onChanged: onChanged),
+  Widget _buildSlider({required double value, required double min, required double max, required int divisions, required String label, required ValueChanged<double> onChanged}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        Slider(
+          value: value, min: min, max: max, divisions: divisions,
+          label: value.round().toString(),
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 
-  Widget _buildSwitchTile({required String title, required bool value, required ValueChanged<bool> onChanged}) {
-    return CupertinoListTile(
+  Widget _buildSwitchTile(String title, bool value, ValueChanged<bool> onChanged) {
+    return SwitchListTile(
       title: Text(title),
-      trailing: CupertinoSwitch(value: value, onChanged: onChanged),
+      value: value,
+      onChanged: onChanged,
+      contentPadding: EdgeInsets.zero,
+      activeColor: Theme.of(context).colorScheme.primary,
     );
   }
 
   Widget _buildActionButtons() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
         children: [
-          Expanded(
-            child: CupertinoButton(
-              onPressed: _applyFilterAndReturn,
-              child: const Text('Search'),
-            ),
-          ),
+          Expanded(child: OutlinedButton(onPressed: _applyFilterAndReturn, child: const Text('Search'))),
           const SizedBox(width: 16),
-          Expanded(
-            child: CupertinoButton.filled(
-              child: const Text('Save'),
-              onPressed: () {},
-            ),
-          ),
+          Expanded(child: ElevatedButton(onPressed: _savePreferences, child: const Text('Save'))),
         ],
       ),
     );
