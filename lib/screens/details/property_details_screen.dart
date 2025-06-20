@@ -35,7 +35,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: Text(widget.propertyId),
-        // The trailing heart icon is now a functional button.
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: _toggleSave,
@@ -51,8 +50,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             height: 250,
             child: PageView(
               children: [
-                Image.network('https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=500', fit: BoxFit.cover),
-                Image.network('https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=500', fit: BoxFit.cover),
+                // Replaced Image.network with Image.asset and updated paths
+                Image.asset('assets/images/villa.jpg', fit: BoxFit.cover),
+                Image.asset('assets/images/condo1.jpg', fit: BoxFit.cover),
+                Image.asset('assets/images/apart.png', fit: BoxFit.cover), // Added the third image as an example
               ],
             ),
           ),

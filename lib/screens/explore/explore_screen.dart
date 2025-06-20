@@ -1,13 +1,10 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show CircleAvatar; // <-- FIX: Import CircleAvatar
+import 'package:flutter/material.dart' show CircleAvatar;
 import 'package:flutter/services.dart';
-import 'package:blurrycontainer/blurrycontainer.dart';
 import 'package:digital_addressing_app/data/saved_properties.dart';
 import 'package:digital_addressing_app/screens/details/property_details_screen.dart';
 import 'package:digital_addressing_app/screens/filters/search_preferences_screen.dart';
 import 'package:digital_addressing_app/screens/routing/routing_screen.dart';
-
-enum MapMode { browsing, searchResult, filterResult }
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -17,9 +14,10 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  MapMode _mode = MapMode.browsing;
+  // State variables for the interactive simulation
   int _zoomLevel = 0;
-  String? _currentId;
+  String? _searchedId;
+  String? _activeFilter; // New state for filter results
   bool _showFloors = false;
   int? _selectedFloor;
 
@@ -31,15 +29,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
     super.dispose();
   }
 
+  // --- LOGIC METHODS ---
+
   void _updateZoom(int change) {
-    setState(() { _zoomLevel = (_zoomLevel + change).clamp(0, 2); });
+    setState(() {
+      _zoomLevel = (_zoomLevel + change).clamp(0, 2);
+    });
   }
 
   void _handleSearch(String id) {
     if (id.length == 10 && int.tryParse(id) != null) {
       setState(() {
-        _mode = MapMode.searchResult;
-        _currentId = id;
+        _searchedId = id;
+        _activeFilter = null;
         _showFloors = false;
         _selectedFloor = null;
         _searchController.clear();
@@ -50,8 +52,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _resetToDefaultView() {
     setState(() {
-      _mode = MapMode.browsing;
-      _currentId = null;
+      _searchedId = null;
+      _activeFilter = null;
       _showFloors = false;
       _selectedFloor = null;
       _zoomLevel = 0;
@@ -62,10 +64,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final result = await Navigator.of(context).push<String>(
       CupertinoPageRoute(builder: (context) => const SearchPreferencesScreen()),
     );
+
     if (result != null) {
       setState(() {
-        _mode = MapMode.filterResult;
-        _currentId = result;
+        _activeFilter = result;
+        _searchedId = null; // Clear any search when a filter is applied
       });
     }
   }
@@ -81,35 +84,33 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   String _getCurrentMapImagePath() {
-    switch (_mode) {
-      case MapMode.filterResult: return 'assets/images/map_filter_$_currentId.jpg';
-      case MapMode.searchResult:
-        if (_selectedFloor != null) return 'assets/images/map_floor_$_selectedFloor.jpg';
-        return 'assets/images/map_search_result.jpg';
-      case MapMode.browsing:
-      default:
-        switch (_zoomLevel) {
-          case 1: return 'assets/images/map_zoom_1.jpg';
-          case 2: return 'assets/images/map_zoom_2.jpg';
-          default: return 'assets/images/map_default.jpg';
-        }
+    if (_activeFilter != null) {
+      return 'assets/images/map_filter_$_activeFilter.jpg';
+    }
+    if (_searchedId != null) {
+      if (_selectedFloor != null) {
+        return 'assets/images/map_floor_$_selectedFloor.jpg';
+      }
+      return 'assets/images/map_search_result.jpg';
+    }
+    switch (_zoomLevel) {
+      case 1: return 'assets/images/map_zoom_1.jpg';
+      case 2: return 'assets/images/map_zoom_2.jpg';
+      default: return 'assets/images/map_default.jpg';
     }
   }
+
+  // --- BUILD METHODS ---
 
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       child: Stack(
         children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 500),
-            child: Image.asset(
-              _getCurrentMapImagePath(),
-              key: ValueKey(_getCurrentMapImagePath()),
-              fit: BoxFit.fitHeight,
-              height: double.infinity,
-              width: double.infinity,
-            ),
+          InteractiveViewer(
+            panEnabled: true, minScale: 0.5, maxScale: 4.0,
+            // FIX 1: Use BoxFit.fitHeight to preserve verticality
+            child: Image.asset(_getCurrentMapImagePath(), key: ValueKey(_getCurrentMapImagePath()), fit: BoxFit.fitHeight, height: double.infinity, width: double.infinity),
           ),
           _buildFloatingUI(),
         ],
@@ -122,68 +123,85 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: Stack(
         children: [
           Positioned(top: 10, left: 15, right: 15, child: _buildFloatingSearch()),
-          _buildBrowsingControls(),
-          _buildSearchResultControls(),
-          _buildContextualBackButton(),
+          if (_searchedId != null) _buildSearchResultUI(),
+          if (_searchedId == null && _activeFilter == null)
+            Positioned(
+              bottom: 15,
+              right: 15,
+              child: Column(
+                children: [
+                  _buildFloatingButton(icon: CupertinoIcons.add, onPressed: () => _updateZoom(1)),
+                  const SizedBox(height: 10),
+                  _buildFloatingButton(icon: CupertinoIcons.minus, onPressed: () => _updateZoom(-1)),
+                ],
+              ),
+            ),
+          // Show a "Clear Filter/Search" button if either is active
+          if (_searchedId != null || _activeFilter != null)
+            Positioned(
+              bottom: 15, left: 15,
+              child: CupertinoButton.filled(
+                child: const Row(children: [Icon(CupertinoIcons.back), SizedBox(width: 8), Text('Back to Map')]),
+                onPressed: _resetToDefaultView,
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildBrowsingControls() {
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 300),
-      opacity: _mode == MapMode.browsing ? 1.0 : 0.0,
-      child: Stack(
+  Widget _buildFloatingSearch() {
+    final barColor = CupertinoTheme.of(context).barBackgroundColor;
+    return Container(
+      decoration: BoxDecoration(color: barColor, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: CupertinoColors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 4))]),
+      child: Row(
         children: [
-          Positioned(
-            bottom: 15, right: 15,
-            child: Column(
-              children: [
-                _buildFloatingButton(icon: CupertinoIcons.add, onPressed: () => _updateZoom(1)),
-                const SizedBox(height: 10),
-                _buildFloatingButton(icon: CupertinoIcons.minus, onPressed: () => _updateZoom(-1)),
-              ],
+          Expanded(
+            child: CupertinoTextField(
+              controller: _searchController,
+              placeholder: 'Search by 10-digit ID...',
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+              onSubmitted: _handleSearch,
+              prefix: const Padding(padding: EdgeInsets.only(left: 8.0), child: Icon(CupertinoIcons.search, color: CupertinoColors.systemGrey)),
+              decoration: BoxDecoration(color: barColor, borderRadius: BorderRadius.circular(12)),
+              clearButtonMode: OverlayVisibilityMode.editing,
             ),
           ),
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: const Icon(CupertinoIcons.slider_horizontal_3),
+            onPressed: _openFilters, // Open the filter screen
+          )
         ],
       ),
     );
   }
 
-  Widget _buildSearchResultControls() {
-    if (_mode != MapMode.searchResult) return const SizedBox.shrink();
-
-    final isSaved = SavedProperties.propertyIds.contains(_currentId!);
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 300),
-      opacity: _mode == MapMode.searchResult ? 1.0 : 0.0,
-      child: Stack(
+  Widget _buildSearchResultUI() {
+    final isSaved = SavedProperties.propertyIds.contains(_searchedId!);
+    return Positioned(
+      top: 60, right: 15,
+      child: Column(
         children: [
-          Positioned(
-            top: 70, right: 15,
-            child: Column(
-              children: [
-                _buildFloatingButton(icon: CupertinoIcons.info, onPressed: () => Navigator.of(context).push(CupertinoPageRoute(builder: (_) => PropertyDetailsScreen(propertyId: _currentId!)))),
-                const SizedBox(height: 10),
-                _buildFloatingButton(icon: CupertinoIcons.list_bullet, onPressed: () => setState(() => _showFloors = !_showFloors)),
-                const SizedBox(height: 10),
-                _buildFloatingButton(icon: CupertinoIcons.location_fill, onPressed: () => Navigator.of(context).push(CupertinoPageRoute(builder: (_) => RoutingScreen(destinationId: _currentId!)))),
-                const SizedBox(height: 10),
-                _buildFloatingButton(
-                  icon: isSaved ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
-                  iconColor: isSaved ? CupertinoColors.systemRed : null,
-                  onPressed: () => _toggleSave(_currentId!),
-                ),
-              ],
-            ),
+          _buildFloatingButton(icon: CupertinoIcons.info, onPressed: () => Navigator.of(context).push(CupertinoPageRoute(builder: (_) => PropertyDetailsScreen(propertyId: _searchedId!)))),
+          const SizedBox(height: 10),
+          _buildFloatingButton(icon: CupertinoIcons.list_bullet, onPressed: () => setState(() => _showFloors = !_showFloors)),
+          const SizedBox(height: 10),
+          _buildFloatingButton(icon: CupertinoIcons.location_fill, onPressed: () => Navigator.of(context).push(CupertinoPageRoute(builder: (_) => RoutingScreen(destinationId: _searchedId!)))),
+          const SizedBox(height: 10),
+          // The new "Save" button in the search context
+          _buildFloatingButton(
+            icon: isSaved ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+            iconColor: isSaved ? CupertinoColors.systemRed : null, // Make icon red when saved
+            onPressed: () => _toggleSave(_searchedId!),
           ),
-          AnimatedOpacity(
-            duration: const Duration(milliseconds: 300),
-            opacity: _showFloors ? 1.0 : 0.0,
-            child: _showFloors ? Positioned(
-              top: 120, right: 70,
-              child: _buildFrostedContainer(
+          if (_showFloors)
+            Padding(
+              padding: const EdgeInsets.only(top: 10.0),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: CupertinoTheme.of(context).barBackgroundColor.withOpacity(0.9), borderRadius: BorderRadius.circular(12)),
                 child: Column(
                   children: List.generate(7, (index) {
                     final floor = index + 1;
@@ -195,86 +213,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   }),
                 ),
               ),
-            ) : const SizedBox.shrink(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContextualBackButton() {
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-      bottom: _mode != MapMode.browsing ? 15 : -80,
-      left: 15,
-      child: CupertinoButton.filled(
-        child: const Row(children: [Icon(CupertinoIcons.back), SizedBox(width: 8), Text('Back to Map')]),
-        onPressed: _resetToDefaultView,
-      ),
-    );
-  }
-
-  // --- FIX: Method signature updated to accept padding and borderRadius ---
-  Widget _buildFrostedContainer({
-    required Widget child,
-    EdgeInsetsGeometry padding = const EdgeInsets.all(8),
-    BorderRadius? borderRadius,
-  }) {
-    return BlurryContainer(
-      blur: 5,
-      color: CupertinoTheme.of(context).barBackgroundColor.withOpacity(0.7),
-      elevation: 0,
-      borderRadius: borderRadius ?? BorderRadius.circular(12),
-      padding: padding,
-      child: child,
-    );
-  }
-
-  Widget _buildFloatingSearch() {
-    return _buildFrostedContainer(
-      // The call now matches the updated method signature
-      padding: EdgeInsets.zero,
-      child: Row(
-        children: [
-          Expanded(
-            child: CupertinoTextField(
-              controller: _searchController,
-              placeholder: 'Search by 10-digit ID...',
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-              onSubmitted: _handleSearch,
-              prefix: const Padding(padding: EdgeInsets.only(left: 8.0), child: Icon(CupertinoIcons.search, color: CupertinoColors.systemGrey)),
-              decoration: const BoxDecoration(color: Color(0x00000000)),
-              clearButtonMode: OverlayVisibilityMode.editing,
             ),
-          ),
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: const Icon(CupertinoIcons.slider_horizontal_3),
-            onPressed: _openFilters,
-          )
         ],
       ),
     );
   }
 
-  Widget _buildFloatingButton({required IconData icon, VoidCallback? onPressed, Color? iconColor}) {
+  Widget _buildFloatingButton({required IconData icon, required VoidCallback onPressed, Color? iconColor}) {
+    final barColor = CupertinoTheme.of(context).barBackgroundColor;
     final defaultIconColor = CupertinoTheme.of(context).brightness == Brightness.dark ? CupertinoColors.white : CupertinoColors.black;
-    return _buildFrostedContainer(
-      // The call now matches the updated method signature
-      padding: EdgeInsets.zero,
-      borderRadius: BorderRadius.circular(30),
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: onPressed,
-        // The CircleAvatar now works because the import was added at the top.
-        child: CircleAvatar(
-          radius: 22,
-          backgroundColor: const Color(0x00000000),
-          child: Icon(icon, color: iconColor ?? defaultIconColor),
-        ),
-      ),
+    return Container(
+      decoration: BoxDecoration(color: barColor, shape: BoxShape.circle, boxShadow: [BoxShadow(color: CupertinoColors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))]),
+      child: CupertinoButton(padding: EdgeInsets.zero, onPressed: onPressed, child: CircleAvatar(radius: 22, backgroundColor: barColor, child: Icon(icon, color: iconColor ?? defaultIconColor))),
     );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:digital_addressing_app/screens/login/login_screen.dart';
 import 'package:digital_addressing_app/screens/profile/edit_profile_screen.dart';
 import 'package:digital_addressing_app/screens/settings/settings_screen.dart';
@@ -7,87 +7,78 @@ import 'package:digital_addressing_app/screens/help/help_screen.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    final user = {'name': 'Beti21', 'email': 'beti21@gmail.com', 'avatarUrl': 'https://i.pravatar.cc/150?img=12'};
-
-    return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(middle: Text('Profile')),
-      child: ListView(
-        children: [
-          const SizedBox(height: 20),
-          CupertinoListSection.insetGrouped(
-            children: [
-              CupertinoListTile(
-                leading: ClipRRect(borderRadius: BorderRadius.circular(22.0), child: Image.network(user['avatarUrl']!, width: 44.0, height: 44.0, fit: BoxFit.cover)),
-                title: Text(user['name']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(user['email']!),
-                trailing: const CupertinoListTileChevron(),
-                onTap: () => Navigator.of(context).push(CupertinoPageRoute(builder: (_) => const EditProfileScreen())),
-              ),
-            ],
+  void _showLogoutConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log Out'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (Route<dynamic> route) => false,
+              );
+            },
+            child: const Text('Log Out'),
           ),
-          CupertinoListSection.insetGrouped(
-            header: const Text('SAVED PLACES'),
-            children: const [
-              CupertinoListTile(title: Text('Home'), trailing: CupertinoListTileChevron()),
-              CupertinoListTile(title: Text('Work'), trailing: CupertinoListTileChevron()),
-            ],
-          ),
-          CupertinoListSection.insetGrouped(
-            children: [
-              CupertinoListTile(
-                title: const Text('Settings'),
-                leading: const Icon(CupertinoIcons.settings),
-                trailing: const CupertinoListTileChevron(),
-                onTap: () => Navigator.of(context).push(CupertinoPageRoute(builder: (_) => const SettingsScreen())),
-              ),
-              CupertinoListTile(
-                title: const Text('Help & Support'),
-                leading: const Icon(CupertinoIcons.question_circle),
-                trailing: const CupertinoListTileChevron(),
-                onTap: () => Navigator.of(context).push(CupertinoPageRoute(builder: (_) => const HelpScreen())),
-              ),
-            ],
-          ),
-          CupertinoListSection.insetGrouped(
-            children: [
-              CupertinoListTile(
-                title: const Text('Log Out', style: TextStyle(color: CupertinoColors.destructiveRed)),
-                leading: const Icon(CupertinoIcons.square_arrow_left, color: CupertinoColors.destructiveRed),
-                onTap: () => _showLogoutConfirmation(context),
-              ),
-            ],
-          )
         ],
       ),
     );
   }
 
-  void _showLogoutConfirmation(BuildContext context) {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('Log Out'),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.of(context).pop(),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile')),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          _buildProfileHeader(context),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('Settings'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
           ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            child: const Text('Log Out'),
-            onPressed: () {
-              // Clear navigation stack and go to LoginScreen
-              Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                CupertinoPageRoute(builder: (context) => const LoginScreen()),
-                    (Route<dynamic> route) => false,
-              );
-            },
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('Help & Support'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HelpScreen())),
+          ),
+          ListTile(
+            leading: Icon(Icons.logout, color: Theme.of(context).colorScheme.error),
+            title: Text('Log Out', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            onTap: () => _showLogoutConfirmation(context),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileHeader(BuildContext context) {
+    return Row(
+      children: [
+        const CircleAvatar(radius: 40, backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=12')),
+        const SizedBox(width: 20),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Beti21', style: Theme.of(context).textTheme.headlineSmall),
+            TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditProfileScreen())),
+              style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
+              child: const Text('Edit profile >'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
